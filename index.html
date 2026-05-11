@@ -222,6 +222,10 @@
       transform: scale(1.2);
       box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 0 4px rgba(255,255,255,0.3);
     }
+    @media (hover: none) {
+      input[type=range] { height: 12px; }
+      input[type=range]::-webkit-slider-thumb { width: 36px; height: 36px; }
+    }
 
     #slider-r { background: linear-gradient(to right, #1a0000, #ff0000); }
     #slider-g { background: linear-gradient(to right, #001a00, #00ff00); }
@@ -518,6 +522,14 @@
         font-size:0.9rem; font-weight:600; cursor:pointer;
         transition:background 0.2s, transform 0.15s;
       ">💾 Save to Recent</button>
+
+      <button id="mix-btn" style="
+        margin-top:0.6rem; width:100%; padding:0.7rem;
+        background: rgba(255,255,255,0.05);
+        border:1px solid var(--border); border-radius:12px; color:var(--text);
+        font-size:0.9rem; font-weight:600; cursor:pointer;
+        transition:background 0.2s, transform 0.15s;
+      ">🧪 Add to Mix Zone</button>
     </div>
 
     <!-- Suggestions -->
@@ -531,7 +543,7 @@
       <h2>Mix Two Colors — Drag swatches here</h2>
       <div class="mix-zone" id="mix-zone">
         <div id="mix-prompt" style="color:var(--muted);font-size:0.9rem;">
-          🖱️ Drag your color swatch here, then drag another from Recent Colors to blend them
+          🧪 Use <strong style="color:var(--text)">Add to Mix Zone</strong> button (or drag swatches here on desktop) to blend two colors
         </div>
         <div class="mix-zone-result" id="mix-result" style="display:none;"></div>
       </div>
@@ -959,11 +971,33 @@ function renderMixZone() {
   mixZone.appendChild(clearBtn);
 }
 
+// ─── Mix button (touch-friendly) ─────────────────────────────────────────────
+document.getElementById('mix-btn').addEventListener('click', () => {
+  if (!mixSlot[0]) {
+    mixSlot[0] = { r, g, b };
+  } else if (!mixSlot[1]) {
+    mixSlot[1] = { r, g, b };
+  } else {
+    mixSlot[0] = mixSlot[1];
+    mixSlot[1] = { r, g, b };
+  }
+  renderMixZone();
+  showToast('Added to mix zone!');
+});
+
+document.getElementById('mix-btn').addEventListener('mouseenter', function() {
+  this.style.background = 'rgba(255,255,255,0.1)';
+});
+document.getElementById('mix-btn').addEventListener('mouseleave', function() {
+  this.style.background = 'rgba(255,255,255,0.05)';
+});
+
 // ─── Particles ────────────────────────────────────────────────────────────────
 function makeParticles() {
   const container = document.getElementById('particles');
   const colors = ['#ff6b6b','#a855f7','#3b82f6','#22c55e','#f59e0b','#ec4899'];
-  for (let i = 0; i < 18; i++) {
+  const count = window.matchMedia('(max-width: 640px)').matches ? 8 : 18;
+  for (let i = 0; i < count; i++) {
     const p = document.createElement('div');
     p.className = 'particle';
     const size = Math.random() * 60 + 20;
