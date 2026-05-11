@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Color Mixer Lab 🎨</title>
+  <style>
+    :root {
+      --bg: #0a0a1a;
+      --card: #12122a;
+      --border: #2a2a4a;
+      --text: #e0e0ff;
+      --muted: #8888bb;
+      --glow: rgba(120, 80, 255, 0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(ellipse at 20% 20%, rgba(255,50,50,0.07) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(50,50,255,0.07) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(50,200,50,0.04) 0%, transparent 60%);
+    }
+
+    /* Floating particles background */
+    .particles {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.15;
+      animation: float linear infinite;
+    }
+
+    @keyframes float {
+      from { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+      10%  { opacity: 0.2; }
+      90%  { opacity: 0.15; }
+      to   { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+    }
+
+    .container {
+      position: relative; z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    header h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 900;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, #ff6b6b, #a855f7, #3b82f6, #22c55e);
+      background-size: 300% 300%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradientShift 4s ease infinite;
+    }
+    @keyframes gradientShift {
+      0%,100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    header p {
+      color: var(--muted);
+      margin-top: 0.5rem;
+      font-size: 1.05rem;
+    }
+
+    /* Main layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 640px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1.5rem;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+      transition: box-shadow 0.3s;
+    }
+    .card:hover { box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07); }
+
+    .card h2 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+    }
+
+    /* Color preview */
+    .preview-box {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 16px;
+      transition: background-color 0.15s;
+      box-shadow: 0 0 60px var(--preview-glow, transparent), inset 0 2px 4px rgba(255,255,255,0.15);
+      cursor: grab;
+      position: relative;
+      overflow: hidden;
+    }
+    .preview-box::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+      border-radius: inherit;
+      pointer-events: none;
+    }
+    .preview-box.dragging { cursor: grabbing; transform: scale(0.97); }
+
+    .color-hex {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      margin-top: 1rem;
+      font-family: 'Courier New', monospace;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      user-select: all;
+    }
+    .color-hex:hover { opacity: 0.7; }
+
+    .color-name {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+      min-height: 1.2em;
+    }
+
+    .copy-hint {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      opacity: 0.6;
+    }
+
+    /* Sliders */
+    .sliders-card { grid-column: span 1; }
+
+    .slider-group { margin-bottom: 1.4rem; }
+    .slider-group:last-child { margin-bottom: 0; }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .slider-label span:first-child {
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 8px currentColor;
+    }
+    .slider-label .value-badge {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.15rem 0.6rem;
+      font-size: 0.85rem;
+      font-family: monospace;
+      font-weight: 700;
+      min-width: 2.8rem;
+      text-align: center;
+      transition: background 0.2s;
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      outline: none;
+      cursor: pointer;
+      transition: height 0.15s;
+    }
+    input[type=range]:hover { height: 13px; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,255,255,0.2);
+      cursor: grab;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    input[type=range]:active::-webkit-slider-thumb {
+      cursor: grabbing;
+      transform: scale(1.2);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 0 4px rgba(255,255,255,0.3);
+    }
+    @media (hover: none) {
+      input[type=range] { height: 12px; }
+      input[type=range]::-webkit-slider-thumb { width: 36px; height: 36px; }
+    }
+
+    #slider-r { background: linear-gradient(to right, #1a0000, #ff0000); }
+    #slider-g { background: linear-gradient(to right, #001a00, #00ff00); }
+    #slider-b { background: linear-gradient(to right, #00001a, #0000ff); }
+
+    /* Percentage bars */
+    .pct-bar {
+      height: 4px;
+      border-radius: 999px;
+      margin-top: 6px;
+      transition: width 0.2s;
+      opacity: 0.5;
+    }
+
+    /* Suggestions */
+    .suggestions {
+      grid-column: 1 / -1;
+    }
+    .suggest-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+    .suggest-card {
+      border-radius: 14px;
+      padding: 0.85rem;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      background: var(--card);
+      user-select: none;
+    }
+    .suggest-card:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      border-color: rgba(255,255,255,0.15);
+    }
+    .suggest-card:active { transform: scale(0.97); }
+    .suggest-swatch {
+      width: 100%; height: 56px;
+      border-radius: 10px;
+      margin-bottom: 0.6rem;
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    .suggest-swatch::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+      border-radius: inherit;
+    }
+    .suggest-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text);
+      margin-bottom: 0.15rem;
+    }
+    .suggest-rgb {
+      font-size: 0.65rem;
+      color: var(--muted);
+      font-family: monospace;
+    }
+
+    /* Recent colors */
+    .recent-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .recent-swatch {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .recent-swatch::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%);
+    }
+    .recent-swatch:hover {
+      transform: scale(1.15);
+      border-color: rgba(255,255,255,0.4);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      z-index: 5;
+    }
+    .recent-empty {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-style: italic;
+    }
+
+    /* Drop zone */
+    .mix-zone {
+      grid-column: 1 / -1;
+      border: 2px dashed var(--border);
+      border-radius: 20px;
+      padding: 1.5rem;
+      text-align: center;
+      transition: border-color 0.2s, background 0.2s;
+      min-height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .mix-zone.drag-over {
+      border-color: rgba(168, 85, 247, 0.7);
+      background: rgba(168, 85, 247, 0.08);
+    }
+    .mix-zone-result {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .mix-chip {
+      width: 60px; height: 60px;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.15);
+      position: relative;
+      cursor: pointer;
+    }
+    .mix-arrow { font-size: 1.5rem; color: var(--muted); }
+    .mix-result-swatch {
+      width: 80px; height: 80px;
+      border-radius: 16px;
+      border: 2px solid rgba(255,255,255,0.2);
+      box-shadow: 0 0 30px var(--mix-glow, transparent);
+      transition: background-color 0.3s;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: rgba(30, 30, 60, 0.95);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      border-radius: 12px;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      z-index: 1000;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+      opacity: 0;
+      pointer-events: none;
+      backdrop-filter: blur(12px);
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* RGB breakdown */
+    .rgb-breakdown {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .rgb-pill {
+      flex: 1;
+      padding: 0.4rem;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    /* Harmony colors */
+    .harmony-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .harmony-chip {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: transform 0.2s;
+      position: relative;
+    }
+    .harmony-chip:hover { transform: scale(1.15); z-index: 5; }
+    .harmony-chip[title]:hover::after {
+      content: attr(title);
+      position: absolute;
+      bottom: 110%; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.65rem;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    /* Sections full width */
+    .full-row { grid-column: 1 / -1; }
+
+    /* Section titles */
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating particles -->
+<div class="particles" id="particles"></div>
+
+<div class="container">
+  <header>
+    <h1>🎨 Color Mixer Lab</h1>
+    <p>Mix Red, Green &amp; Blue to create over 16 million colors!</p>
+  </header>
+
+  <div class="main-grid">
+
+    <!-- Preview -->
+    <div class="card" id="preview-card">
+      <h2>Your Color</h2>
+      <div class="preview-box" id="preview" draggable="true" title="Drag me!"></div>
+      <div class="color-hex" id="hex-display" title="Click to copy">#FF0000</div>
+      <div class="color-name" id="color-name">Red</div>
+      <div class="copy-hint">Click hex to copy &bull; Drag swatch to mix zone</div>
+      <div class="rgb-breakdown">
+        <div class="rgb-pill" id="r-pill" style="background:rgba(255,0,0,0.25);color:#ff8888;">R: 255</div>
+        <div class="rgb-pill" id="g-pill" style="background:rgba(0,255,0,0.15);color:#88ff88;">G: 0</div>
+        <div class="rgb-pill" id="b-pill" style="background:rgba(0,0,255,0.15);color:#8888ff;">B: 0</div>
+      </div>
+      <div class="section-title" style="margin-top:1rem;">Color Harmony</div>
+      <div class="harmony-row" id="harmony-row"></div>
+    </div>
+
+    <!-- Sliders -->
+    <div class="card sliders-card">
+      <h2>Mix Your Color</h2>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span><span class="dot" style="background:#ff4444;color:#ff4444;"></span> Red</span>
+          <span class="value-badge" id="r-val">255</span>
+        </div>
+        <input type="range" id="slider-r" min="0" max="255" value="255" />
+        <div class="pct-bar" id="r-bar" style="background:#ff4444;width:100%;"></div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span><span class="dot" style="background:#44ff44;color:#44ff44;"></span> Green</span>
+          <span class="value-badge" id="g-val">0</span>
+        </div>
+        <input type="range" id="slider-g" min="0" max="255" value="0" />
+        <div class="pct-bar" id="g-bar" style="background:#44ff44;width:0%;"></div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span><span class="dot" style="background:#4488ff;color:#4488ff;"></span> Blue</span>
+          <span class="value-badge" id="b-val">0</span>
+        </div>
+        <input type="range" id="slider-b" min="0" max="255" value="0" />
+        <div class="pct-bar" id="b-bar" style="background:#4488ff;width:0%;"></div>
+      </div>
+
+      <button id="random-btn" style="
+        margin-top:1.25rem; width:100%; padding:0.8rem;
+        background: linear-gradient(135deg, #a855f7, #3b82f6);
+        border:none; border-radius:12px; color:#fff;
+        font-size:0.95rem; font-weight:700; cursor:pointer;
+        letter-spacing:0.5px; transition:opacity 0.2s, transform 0.15s;
+        box-shadow: 0 4px 15px rgba(168,85,247,0.3);
+      ">🎲 Random Color</button>
+
+      <button id="save-btn" style="
+        margin-top:0.6rem; width:100%; padding:0.7rem;
+        background: rgba(255,255,255,0.05);
+        border:1px solid var(--border); border-radius:12px; color:var(--text);
+        font-size:0.9rem; font-weight:600; cursor:pointer;
+        transition:background 0.2s, transform 0.15s;
+      ">💾 Save to Recent</button>
+
+      <button id="mix-btn" style="
+        margin-top:0.6rem; width:100%; padding:0.7rem;
+        background: rgba(255,255,255,0.05);
+        border:1px solid var(--border); border-radius:12px; color:var(--text);
+        font-size:0.9rem; font-weight:600; cursor:pointer;
+        transition:background 0.2s, transform 0.15s;
+      ">🧪 Add to Mix Zone</button>
+    </div>
+
+    <!-- Suggestions -->
+    <div class="card suggestions">
+      <h2>Color Recipes — Click to Apply</h2>
+      <div class="suggest-grid" id="suggest-grid"></div>
+    </div>
+
+    <!-- Mix Zone -->
+    <div class="card full-row">
+      <h2>Mix Two Colors — Drag swatches here</h2>
+      <div class="mix-zone" id="mix-zone">
+        <div id="mix-prompt" style="color:var(--muted);font-size:0.9rem;">
+          🧪 Use <strong style="color:var(--text)">Add to Mix Zone</strong> button (or drag swatches here on desktop) to blend two colors
+        </div>
+        <div class="mix-zone-result" id="mix-result" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- Recent Colors -->
+    <div class="card full-row">
+      <h2>Recent Colors</h2>
+      <div class="recent-grid" id="recent-grid">
+        <span class="recent-empty">No colors saved yet — move sliders and click Save!</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let r = 255, g = 0, b = 0;
+let recentColors = JSON.parse(localStorage.getItem('colorMixerRecent') || '[]');
+let mixSlot = [null, null]; // [color1, color2]
+let dragSourceColor = null;
+
+// ─── Named colors database ────────────────────────────────────────────────────
+const colorNames = [
+  { name:'Red',        r:255,g:0,b:0 },
+  { name:'Green',      r:0,g:128,b:0 },
+  { name:'Blue',       r:0,g:0,b:255 },
+  { name:'Yellow',     r:255,g:255,b:0 },
+  { name:'Cyan',       r:0,g:255,b:255 },
+  { name:'Magenta',    r:255,g:0,b:255 },
+  { name:'Orange',     r:255,g:165,b:0 },
+  { name:'Purple',     r:128,g:0,b:128 },
+  { name:'Pink',       r:255,g:105,b:180 },
+  { name:'Lime',       r:0,g:255,b:0 },
+  { name:'Teal',       r:0,g:128,b:128 },
+  { name:'Coral',      r:255,g:127,b:80 },
+  { name:'Gold',       r:255,g:215,b:0 },
+  { name:'Crimson',    r:220,g:20,b:60 },
+  { name:'Sky Blue',   r:135,g:206,b:235 },
+  { name:'Mint',       r:62,g:180,b:137 },
+  { name:'Lavender',   r:150,g:123,b:182 },
+  { name:'Salmon',     r:250,g:128,b:114 },
+  { name:'Indigo',     r:75,g:0,b:130 },
+  { name:'White',      r:255,g:255,b:255 },
+  { name:'Black',      r:0,g:0,b:0 },
+  { name:'Gray',       r:128,g:128,b:128 },
+  { name:'Brown',      r:139,g:69,b:19 },
+  { name:'Olive',      r:107,g:142,b:35 },
+  { name:'Navy',       r:0,g:0,b:128 },
+  { name:'Maroon',     r:128,g:0,b:0 },
+  { name:'Turquoise',  r:64,g:224,b:208 },
+  { name:'Violet',     r:238,g:130,b:238 },
+  { name:'Chartreuse', r:127,g:255,b:0 },
+  { name:'Azure',      r:0,g:127,b:255 },
+];
+
+function getClosestName(rr, gg, bb) {
+  let best = colorNames[0], bestDist = Infinity;
+  for (const c of colorNames) {
+    const d = (c.r-rr)**2 + (c.g-gg)**2 + (c.b-bb)**2;
+    if (d < bestDist) { bestDist = d; best = c; }
+  }
+  return best.name;
+}
+
+// ─── Suggestions ─────────────────────────────────────────────────────────────
+const SUGGESTIONS = [
+  { label:'Fire Red',     r:255, g:30,  b:0   },
+  { label:'Ocean Blue',   r:0,   g:105, b:255 },
+  { label:'Jungle Green', r:15,  g:180, b:70  },
+  { label:'Sunset',       r:255, g:120, b:40  },
+  { label:'Purple Dream', r:160, g:20,  b:220 },
+  { label:'Turquoise',    r:0,   g:200, b:180 },
+  { label:'Hot Pink',     r:255, g:20,  b:147 },
+  { label:'Gold',         r:255, g:210, b:0   },
+  { label:'Sky',          r:100, g:180, b:255 },
+  { label:'Mint',         r:50,  g:220, b:140 },
+  { label:'Chocolate',    r:160, g:70,  b:10  },
+  { label:'Violet',       r:200, g:50,  b:255 },
+];
+
+function buildSuggestions() {
+  const grid = document.getElementById('suggest-grid');
+  grid.innerHTML = '';
+  for (const s of SUGGESTIONS) {
+    const hex = toHex(s.r, s.g, s.b);
+    const card = document.createElement('div');
+    card.className = 'suggest-card';
+    card.innerHTML = `
+      <div class="suggest-swatch" style="background:${hex}"></div>
+      <div class="suggest-label">${s.label}</div>
+      <div class="suggest-rgb">R:${s.r} G:${s.g} B:${s.b}</div>
+    `;
+    card.addEventListener('click', () => applyColor(s.r, s.g, s.b));
+    grid.appendChild(card);
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function toHex(rr, gg, bb) {
+  return '#' + [rr, gg, bb].map(v => v.toString(16).padStart(2, '0').toUpperCase()).join('');
+}
+
+function luminance(rr, gg, bb) {
+  return 0.299 * rr + 0.587 * gg + 0.114 * bb;
+}
+
+function hsvToRgb(h, s, v) {
+  h = h % 360; const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+  let rr=0,gg=0,bb=0;
+  if      (h < 60)  { rr=c; gg=x; }
+  else if (h < 120) { rr=x; gg=c; }
+  else if (h < 180) { gg=c; bb=x; }
+  else if (h < 240) { gg=x; bb=c; }
+  else if (h < 300) { rr=x; bb=c; }
+  else              { rr=c; bb=x; }
+  return [Math.round((rr+m)*255), Math.round((gg+m)*255), Math.round((bb+m)*255)];
+}
+
+function rgbToHsv(rr, gg, bb) {
+  rr/=255; gg/=255; bb/=255;
+  const max=Math.max(rr,gg,bb), min=Math.min(rr,gg,bb), d=max-min;
+  let h=0; const s=max===0?0:d/max, v=max;
+  if (d) {
+    if (max===rr) h=(gg-bb)/d + (gg<bb?6:0);
+    else if (max===gg) h=(bb-rr)/d + 2;
+    else h=(rr-gg)/d + 4;
+    h *= 60;
+  }
+  return [h, s, v];
+}
+
+function blendColors(r1,g1,b1,r2,g2,b2) {
+  return [Math.round((r1+r2)/2), Math.round((g1+g2)/2), Math.round((b1+b2)/2)];
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ─── UI Update ────────────────────────────────────────────────────────────────
+function update() {
+  const hex = toHex(r, g, b);
+  const lum = luminance(r, g, b);
+  const textColor = lum > 128 ? '#111' : '#fff';
+
+  // Preview
+  const preview = document.getElementById('preview');
+  preview.style.backgroundColor = hex;
+  preview.style.setProperty('--preview-glow', `rgba(${r},${g},${b},0.5)`);
+  preview.style.boxShadow = `0 0 60px rgba(${r},${g},${b},0.4), inset 0 2px 4px rgba(255,255,255,0.15)`;
+
+  // Hex & name
+  document.getElementById('hex-display').textContent = hex;
+  document.getElementById('hex-display').style.color = lum < 20 ? '#555' : 'var(--text)';
+  document.getElementById('color-name').textContent = getClosestName(r, g, b);
+
+  // RGB pills
+  document.getElementById('r-pill').textContent = `R: ${r}`;
+  document.getElementById('g-pill').textContent = `G: ${g}`;
+  document.getElementById('b-pill').textContent = `B: ${b}`;
+
+  // Badges
+  document.getElementById('r-val').textContent = r;
+  document.getElementById('g-val').textContent = g;
+  document.getElementById('b-val').textContent = b;
+
+  // Bars
+  document.getElementById('r-bar').style.width = (r/255*100) + '%';
+  document.getElementById('g-bar').style.width = (g/255*100) + '%';
+  document.getElementById('b-bar').style.width = (b/255*100) + '%';
+
+  // Slider backgrounds (dynamic tint)
+  document.getElementById('slider-r').style.background = `linear-gradient(to right, #1a0000, rgb(${r},0,0))`;
+  document.getElementById('slider-g').style.background = `linear-gradient(to right, #001a00, rgb(0,${g},0))`;
+  document.getElementById('slider-b').style.background = `linear-gradient(to right, #00001a, rgb(0,0,${b}))`;
+
+  // Card glow
+  document.getElementById('preview-card').style.boxShadow =
+    `0 8px 32px rgba(0,0,0,0.4), 0 0 40px rgba(${r},${g},${b},0.12), inset 0 1px 0 rgba(255,255,255,0.05)`;
+
+  // Harmony
+  buildHarmony();
+}
+
+function buildHarmony() {
+  const row = document.getElementById('harmony-row');
+  row.innerHTML = '';
+  const [h, s, v] = rgbToHsv(r, g, b);
+  const harmonies = [
+    { title: 'Complementary', angle: 180 },
+    { title: 'Triadic 1',     angle: 120 },
+    { title: 'Triadic 2',     angle: 240 },
+    { title: 'Analogous 1',   angle: 30 },
+    { title: 'Analogous 2',   angle: -30 },
+    { title: 'Split 1',       angle: 150 },
+    { title: 'Split 2',       angle: 210 },
+  ];
+  for (const harm of harmonies) {
+    const [rr, gg, bb] = hsvToRgb(h + harm.angle, Math.max(0.2, s), Math.max(0.4, v));
+    const hex = toHex(rr, gg, bb);
+    const chip = document.createElement('div');
+    chip.className = 'harmony-chip';
+    chip.style.background = hex;
+    chip.title = `${harm.title}: ${hex}`;
+    chip.addEventListener('click', () => applyColor(rr, gg, bb));
+    row.appendChild(chip);
+  }
+}
+
+// ─── Apply color ──────────────────────────────────────────────────────────────
+function applyColor(rr, gg, bb) {
+  r = rr; g = gg; b = bb;
+  document.getElementById('slider-r').value = r;
+  document.getElementById('slider-g').value = g;
+  document.getElementById('slider-b').value = b;
+  update();
+  // Pulse animation
+  const p = document.getElementById('preview');
+  p.style.transition = 'transform 0.15s, background-color 0.15s';
+  p.style.transform = 'scale(1.03)';
+  setTimeout(() => p.style.transform = '', 200);
+}
+
+// ─── Sliders ──────────────────────────────────────────────────────────────────
+['r','g','b'].forEach(ch => {
+  document.getElementById(`slider-${ch}`).addEventListener('input', function() {
+    if (ch === 'r') r = +this.value;
+    if (ch === 'g') g = +this.value;
+    if (ch === 'b') b = +this.value;
+    update();
+  });
+});
+
+// ─── Hex copy ────────────────────────────────────────────────────────────────
+document.getElementById('hex-display').addEventListener('click', () => {
+  const hex = toHex(r, g, b);
+  navigator.clipboard.writeText(hex).then(() => showToast(`Copied ${hex}!`)).catch(() => showToast(hex));
+});
+
+// ─── Buttons ──────────────────────────────────────────────────────────────────
+document.getElementById('random-btn').addEventListener('click', () => {
+  applyColor(
+    Math.floor(Math.random() * 256),
+    Math.floor(Math.random() * 256),
+    Math.floor(Math.random() * 256)
+  );
+  showToast('🎲 Random color!');
+});
+
+document.getElementById('random-btn').addEventListener('mouseenter', function() {
+  this.style.opacity = '0.85'; this.style.transform = 'scale(1.02)';
+});
+document.getElementById('random-btn').addEventListener('mouseleave', function() {
+  this.style.opacity = '1'; this.style.transform = '';
+});
+
+document.getElementById('save-btn').addEventListener('click', () => {
+  saveToRecent(r, g, b);
+});
+
+document.getElementById('save-btn').addEventListener('mouseenter', function() {
+  this.style.background = 'rgba(255,255,255,0.1)';
+});
+document.getElementById('save-btn').addEventListener('mouseleave', function() {
+  this.style.background = 'rgba(255,255,255,0.05)';
+});
+
+// ─── Recent Colors ────────────────────────────────────────────────────────────
+function saveToRecent(rr, gg, bb) {
+  const hex = toHex(rr, gg, bb);
+  recentColors = recentColors.filter(c => c.hex !== hex);
+  recentColors.unshift({ r: rr, g: gg, b: bb, hex });
+  if (recentColors.length > 20) recentColors.pop();
+  localStorage.setItem('colorMixerRecent', JSON.stringify(recentColors));
+  renderRecent();
+  showToast(`Saved ${hex}!`);
+}
+
+function renderRecent() {
+  const grid = document.getElementById('recent-grid');
+  if (recentColors.length === 0) {
+    grid.innerHTML = '<span class="recent-empty">No colors saved yet — move sliders and click Save!</span>';
+    return;
+  }
+  grid.innerHTML = '';
+  for (const c of recentColors) {
+    const sw = document.createElement('div');
+    sw.className = 'recent-swatch';
+    sw.style.background = c.hex;
+    sw.title = c.hex;
+    sw.draggable = true;
+    sw.addEventListener('click', () => applyColor(c.r, c.g, c.b));
+    sw.addEventListener('dragstart', e => {
+      dragSourceColor = { r: c.r, g: c.g, b: c.b };
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+    grid.appendChild(sw);
+  }
+}
+
+// ─── Drag & Drop mix zone ────────────────────────────────────────────────────
+const preview = document.getElementById('preview');
+preview.addEventListener('dragstart', e => {
+  dragSourceColor = { r, g, b };
+  e.dataTransfer.effectAllowed = 'copy';
+});
+preview.addEventListener('dragend', () => { preview.classList.remove('dragging'); });
+preview.addEventListener('mousedown', () => preview.classList.add('dragging'));
+preview.addEventListener('mouseup', () => preview.classList.remove('dragging'));
+
+const mixZone = document.getElementById('mix-zone');
+
+mixZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  mixZone.classList.add('drag-over');
+});
+mixZone.addEventListener('dragleave', () => mixZone.classList.remove('drag-over'));
+mixZone.addEventListener('drop', e => {
+  e.preventDefault();
+  mixZone.classList.remove('drag-over');
+  if (!dragSourceColor) return;
+
+  if (!mixSlot[0]) {
+    mixSlot[0] = { ...dragSourceColor };
+  } else if (!mixSlot[1]) {
+    mixSlot[1] = { ...dragSourceColor };
+  } else {
+    mixSlot[0] = mixSlot[1];
+    mixSlot[1] = { ...dragSourceColor };
+  }
+  renderMixZone();
+  dragSourceColor = null;
+});
+
+function renderMixZone() {
+  const prompt = document.getElementById('mix-prompt');
+  const result = document.getElementById('mix-result');
+
+  if (!mixSlot[0] && !mixSlot[1]) {
+    prompt.style.display = '';
+    result.style.display = 'none';
+    return;
+  }
+
+  prompt.style.display = 'none';
+  result.style.display = 'flex';
+  result.innerHTML = '';
+
+  const c1 = mixSlot[0] || { r:0,g:0,b:0 };
+  const c2 = mixSlot[1];
+
+  // Chip 1
+  const chip1 = document.createElement('div');
+  chip1.className = 'mix-chip';
+  chip1.style.background = toHex(c1.r, c1.g, c1.b);
+  chip1.title = 'Click to apply';
+  chip1.addEventListener('click', () => applyColor(c1.r, c1.g, c1.b));
+  result.appendChild(chip1);
+
+  if (c2) {
+    const arrow = document.createElement('div');
+    arrow.className = 'mix-arrow';
+    arrow.textContent = '+';
+    result.appendChild(arrow);
+
+    const chip2 = document.createElement('div');
+    chip2.className = 'mix-chip';
+    chip2.style.background = toHex(c2.r, c2.g, c2.b);
+    chip2.title = 'Click to apply';
+    chip2.addEventListener('click', () => applyColor(c2.r, c2.g, c2.b));
+    result.appendChild(chip2);
+
+    const arrow2 = document.createElement('div');
+    arrow2.className = 'mix-arrow';
+    arrow2.textContent = '=';
+    result.appendChild(arrow2);
+
+    const [mr, mg, mb] = blendColors(c1.r, c1.g, c1.b, c2.r, c2.g, c2.b);
+    const mixHex = toHex(mr, mg, mb);
+
+    const mixSwatch = document.createElement('div');
+    mixSwatch.className = 'mix-result-swatch';
+    mixSwatch.style.background = mixHex;
+    mixSwatch.style.setProperty('--mix-glow', `rgba(${mr},${mg},${mb},0.5)`);
+    mixSwatch.title = `${mixHex} — click to apply`;
+    mixSwatch.addEventListener('click', () => {
+      applyColor(mr, mg, mb);
+      saveToRecent(mr, mg, mb);
+      showToast(`Mixed color applied: ${mixHex}`);
+    });
+    result.appendChild(mixSwatch);
+
+    const label = document.createElement('div');
+    label.style.cssText = 'color:var(--muted);font-size:0.8rem;text-align:center;';
+    label.innerHTML = `<strong style="color:var(--text)">${mixHex}</strong><br>${getClosestName(mr,mg,mb)}<br><small>click to apply</small>`;
+    result.appendChild(label);
+  } else {
+    const label = document.createElement('div');
+    label.style.cssText = 'color:var(--muted);font-size:0.85rem;';
+    label.textContent = '← Drag a second color here to blend!';
+    result.appendChild(label);
+  }
+
+  // Clear button
+  const clearBtn = document.createElement('button');
+  clearBtn.textContent = '✕ Clear';
+  clearBtn.style.cssText = `
+    position:absolute;top:0.75rem;right:0.75rem;
+    background:rgba(255,255,255,0.05);border:1px solid var(--border);
+    border-radius:8px;color:var(--muted);padding:0.3rem 0.7rem;
+    cursor:pointer;font-size:0.75rem;
+  `;
+  clearBtn.addEventListener('click', () => {
+    mixSlot = [null, null];
+    renderMixZone();
+  });
+  mixZone.style.position = 'relative';
+  mixZone.appendChild(clearBtn);
+}
+
+// ─── Mix button (touch-friendly) ─────────────────────────────────────────────
+document.getElementById('mix-btn').addEventListener('click', () => {
+  if (!mixSlot[0]) {
+    mixSlot[0] = { r, g, b };
+  } else if (!mixSlot[1]) {
+    mixSlot[1] = { r, g, b };
+  } else {
+    mixSlot[0] = mixSlot[1];
+    mixSlot[1] = { r, g, b };
+  }
+  renderMixZone();
+  showToast('Added to mix zone!');
+});
+
+document.getElementById('mix-btn').addEventListener('mouseenter', function() {
+  this.style.background = 'rgba(255,255,255,0.1)';
+});
+document.getElementById('mix-btn').addEventListener('mouseleave', function() {
+  this.style.background = 'rgba(255,255,255,0.05)';
+});
+
+// ─── Particles ────────────────────────────────────────────────────────────────
+function makeParticles() {
+  const container = document.getElementById('particles');
+  const colors = ['#ff6b6b','#a855f7','#3b82f6','#22c55e','#f59e0b','#ec4899'];
+  const count = window.matchMedia('(max-width: 640px)').matches ? 8 : 18;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 60 + 20;
+    p.style.cssText = `
+      width:${size}px; height:${size}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      left:${Math.random()*100}%;
+      animation-duration:${Math.random()*20+15}s;
+      animation-delay:${Math.random()*-20}s;
+    `;
+    container.appendChild(p);
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+buildSuggestions();
+renderRecent();
+update();
+makeParticles();
+</script>
+</body>
+</html>
